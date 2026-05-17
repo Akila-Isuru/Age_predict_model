@@ -1,20 +1,6 @@
-# ──────────────────────────────────────────────────────────────
-# FairVision – requirements.txt
-# Tested on Python 3.10 / 3.11 (Streamlit Cloud default)
-# ──────────────────────────────────────────────────────────────
-
-# Web framework
-streamlit>=1.35.0
-
-# Deep learning  (CPU-only build keeps the slug small on Streamlit Cloud)
-torch>=2.2.0
-torchvision>=0.17.0
-
-# Image handling
-Pillow>=10.0.0
-
-# Numerical computing
-numpy>=1.26.0
-
-# Plotting
-matplotlib>=3.8.0
+streamlit
+torch
+torchvision
+Pillow
+gdown
+pandas
