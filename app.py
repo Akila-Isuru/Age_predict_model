@@ -11,8 +11,8 @@ import pandas as pd
 #  /Users/akilaisuru/Desktop/Assignment/app.py
 
 
-GOOGLE_DRIVE_FILE_ID = "1v6YP_WYMgnsoGbY0MLtSGNDeQNr-HPDW"
-MODEL_PATH = "FairVision.pt"
+GOOGLE_DRIVE_FILE_ID = "1reGBQyBks1mIMy05l5J7qUD0dslvN020"
+MODEL_PATH = "checkpoint.pt"
 
 AGE_GROUPS = [
     "0–2", "3–9", "10–19", "20–29",
