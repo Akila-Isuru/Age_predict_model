@@ -8,9 +8,7 @@ import gdown
 import os
 import pandas as pd
 
-#  /Users/akilaisuru/Desktop/Assignment/app.py
-
-
+# Google Drive File ID and Model Path
 GOOGLE_DRIVE_FILE_ID = "1reGBQyBks1mIMy05l5J7qUD0dslvN020"
 MODEL_PATH = "checkpoint.pt"
 
@@ -19,12 +17,13 @@ AGE_GROUPS = [
     "30–39", "40–49", "50–59", "60–69", "70+"
 ]
 
+# Page configuration
 st.set_page_config(
     page_title="FairVision AI - Age Classification",
     layout="wide"
 )
 
-
+# Custom CSS Styling
 st.markdown("""
     <style>
     /* Main Background & Fonts */
@@ -86,18 +85,14 @@ st.markdown("""
         border-bottom: 2px solid #E2E8F0;
         padding-bottom: 0.4rem;
     }
-    
-    /* Sidebar styling tweaks */
-    .sidebar .sidebar-content {
-        background-color: #0F172A;
-    }
     </style>
 """, unsafe_allow_html=True)  
 
-
+# Model Architecture Definition
 class FairVisionResNet(nn.Module):
     def __init__(self, num_classes=9):
         super().__init__()
+        # weights=None is deprecating in newer versions, using weights=None is fine for empty initialization
         self.backbone = models.resnet50(weights=None)
         num_ftrs = self.backbone.fc.in_features
         self.backbone.fc = nn.Sequential(
@@ -108,6 +103,7 @@ class FairVisionResNet(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
+# Cached function to load model
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -117,21 +113,25 @@ def load_model():
 
     model = FairVisionResNet(num_classes=9)
     checkpoint = torch.load(MODEL_PATH, map_location="cpu")
+    
     state_dict = (
         checkpoint.get("model_state_dict", checkpoint)
         if isinstance(checkpoint, dict)
         else checkpoint
     )
-    model.load_state_dict(
-        {k.replace("module.", ""): v for k, v in state_dict.items()},
-        strict=False
-    )
+    
+    # Clean the keys if trained with DataParallel
+    cleaned_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+    
+    # Setting strict=True ensures all layers match perfectly
+    model.load_state_dict(cleaned_state_dict, strict=True)
     model.eval()
     return model
 
+# Initialize Model
 model = load_model()
 
-
+# Image Transform Pipeline
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
     transforms.ToTensor(),
@@ -141,7 +141,7 @@ transform = transforms.Compose([
     )
 ])
 
-
+# Prediction Function
 def predict(image):
     image_tensor = transform(image).unsqueeze(0)
     with torch.no_grad():
@@ -150,11 +150,10 @@ def predict(image):
         confidence, predicted = torch.max(probabilities, 0)
     return predicted.item(), confidence.item(), probabilities
 
-
+# Sidebar Section
 with st.sidebar:
     st.markdown("## ⚙️ Control Panel")
     st.write("Upload an image below to analyze and predict the age group.")
-    
     
     uploaded_file = st.sidebar.file_uploader(
         "Choose an image file",
@@ -169,24 +168,23 @@ with st.sidebar:
         "to classify human faces into 9 distinct age cohorts safely and unbiasedly."
     )
 
+# Main UI Panel
 st.markdown('<div class="main-title">FairVision AI</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Advanced Age Group Classification Framework</div>', unsafe_allow_html=True)
 
 if uploaded_file:
-    
     col1, col2 = st.columns([1, 1.2], gap="large")
     
-    
+    # Left Column: Image Display
     with col1:
         st.markdown('<div class="section-header">Analyzed Image</div>', unsafe_allow_html=True)
         image = Image.open(uploaded_file).convert("RGB")
         st.image(
             image, 
-            use_container_width=True,
-            channels="RGB"
+            use_container_width=True
         )
         
-  
+    # Right Column: Results Display
     with col2:
         with st.spinner(" Running Deep Learning Inference..."):
             pred_idx, confidence, probs = predict(image)
@@ -194,7 +192,6 @@ if uploaded_file:
         
         st.markdown('<div class="section-header">Classification Results</div>', unsafe_allow_html=True)
         
-      
         metric_col1, metric_col2 = st.columns(2)
         
         with metric_col1:
@@ -213,7 +210,6 @@ if uploaded_file:
                 </div>
             """, unsafe_allow_html=True)
             
-       
         st.markdown('<div class="section-header"> Top 3 Probabilities</div>', unsafe_allow_html=True)
         top_probs, top_indices = torch.topk(probs, 3)
         
@@ -221,13 +217,11 @@ if uploaded_file:
             label = AGE_GROUPS[top_indices[i].item()]
             score = top_probs[i].item()
             
-            # Label & Percentage layout
             p_col1, p_col2 = st.columns([3, 1])
             p_col1.write(f"**{label}**")
             p_col2.write(f"`{score * 100:.2f}%`")
             st.progress(score)
             
-        
         st.markdown('<div class="section-header">Full Distribution</div>', unsafe_allow_html=True)
         df = pd.DataFrame({
             "Age Group": AGE_GROUPS,
@@ -236,7 +230,4 @@ if uploaded_file:
         st.bar_chart(df.set_index("Age Group"), color="#4F46E5")
 
 else:
-   
     st.info(" Please upload an image from the sidebar panel to begin the classification process.")
-    
-    
