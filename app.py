@@ -133,7 +133,7 @@ def load_model():
     # 3. Update current model structure with downloaded valid weights
     model_dict.update(matched_state_dict)
     
-    # Load weights safely without breaking the app due to system versions
+    # Load weights safely
     model.load_state_dict(model_dict, strict=True)
     model.eval()
     return model
@@ -189,6 +189,7 @@ if uploaded_file:
     with col1:
         st.markdown('<div class="section-header">Analyzed Image</div>', unsafe_allow_html=True)
         image = Image.open(uploaded_file).convert("RGB")
+        # මෙතන තිබුණු channels="RGB" ඉවත් කර දෝෂය නිවැරදි කර ඇත
         st.image(
             image, 
             use_container_width=True
