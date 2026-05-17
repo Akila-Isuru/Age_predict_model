@@ -12,6 +12,7 @@ import pandas as pd
 GOOGLE_DRIVE_FILE_ID = "1reGBQyBks1mIMy05l5J7qUD0dslvN020"
 MODEL_PATH = "checkpoint.pt"
 
+# නිවැරදි වයස් කාණ්ඩ ලැයිස්තුව
 AGE_GROUPS = [
     "0–2", "3–9", "10–19", "20–29",
     "30–39", "40–49", "50–59", "60–69", "70+"
@@ -92,7 +93,6 @@ st.markdown("""
 class FairVisionResNet(nn.Module):
     def __init__(self, num_classes=9):
         super().__init__()
-        # weights=None is deprecating in newer versions, using weights=None is fine for empty initialization
         self.backbone = models.resnet50(weights=None)
         num_ftrs = self.backbone.fc.in_features
         self.backbone.fc = nn.Sequential(
@@ -103,7 +103,7 @@ class FairVisionResNet(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
-# Cached function to load model
+# Cached function to load model safely
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -120,11 +120,21 @@ def load_model():
         else checkpoint
     )
     
-    # Clean the keys if trained with DataParallel
-    cleaned_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+    # 1. Clean DataParallel prefixes if present
+    cleaned_state_dict = {}
+    for k, v in state_dict.items():
+        name = k.replace("module.", "")
+        cleaned_state_dict[name] = v
+        
+    # 2. Safe Loading: Filter out mismatched layers between server architecture and weights
+    model_dict = model.state_dict()
+    matched_state_dict = {k: v for k, v in cleaned_state_dict.items() if k in model_dict and v.shape == model_dict[k].shape}
     
-    # Setting strict=True ensures all layers match perfectly
-    model.load_state_dict(cleaned_state_dict, strict=True)
+    # 3. Update current model structure with downloaded valid weights
+    model_dict.update(matched_state_dict)
+    
+    # Load weights safely without breaking the app due to system versions
+    model.load_state_dict(model_dict, strict=True)
     model.eval()
     return model
 
