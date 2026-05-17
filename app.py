@@ -111,7 +111,7 @@ class FairVisionResNet(nn.Module):
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
-        with st.spinner("📥 Downloading model from Google Drive... Please wait."):
+        with st.spinner("Downloading model from Google Drive... Please wait."):
             url = f"https://drive.google.com/uc?id={GOOGLE_DRIVE_FILE_ID}"
             gdown.download(url, MODEL_PATH, quiet=False)
 
@@ -178,7 +178,7 @@ if uploaded_file:
     
     
     with col1:
-        st.markdown('<div class="section-header">📸 Analyzed Image</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Analyzed Image</div>', unsafe_allow_html=True)
         image = Image.open(uploaded_file).convert("RGB")
         st.image(
             image, 
@@ -192,7 +192,7 @@ if uploaded_file:
             pred_idx, confidence, probs = predict(image)
         predicted_label = AGE_GROUPS[pred_idx]
         
-        st.markdown('<div class="section-header">📊 Classification Results</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Classification Results</div>', unsafe_allow_html=True)
         
       
         metric_col1, metric_col2 = st.columns(2)
