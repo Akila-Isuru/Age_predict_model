@@ -89,11 +89,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)  
 
-# Model Architecture Definition
+# Model Architecture Definition (Ultra Safe Version)
 class FairVisionResNet(nn.Module):
     def __init__(self, num_classes=9):
         super().__init__()
-        self.backbone = models.resnet50(weights=None)
+        # පැරණි සහ අලුත් torchvision අනුවාද දෙකටම ගැළපෙන පරිදි සකසා ඇත
+        try:
+            self.backbone = models.resnet50(weights=None)
+        except TypeError:
+            self.backbone = models.resnet50(pretrained=False)
+            
         num_ftrs = self.backbone.fc.in_features
         self.backbone.fc = nn.Sequential(
             nn.Dropout(0.6),
@@ -112,34 +117,43 @@ def load_model():
             gdown.download(url, MODEL_PATH, quiet=False)
 
     model = FairVisionResNet(num_classes=9)
-    checkpoint = torch.load(MODEL_PATH, map_location="cpu")
     
-    state_dict = (
-        checkpoint.get("model_state_dict", checkpoint)
-        if isinstance(checkpoint, dict)
-        else checkpoint
-    )
-    
-    # 1. Clean DataParallel prefixes if present
-    cleaned_state_dict = {}
-    for k, v in state_dict.items():
-        name = k.replace("module.", "")
-        cleaned_state_dict[name] = v
+    try:
+        checkpoint = torch.load(MODEL_PATH, map_location="cpu")
         
-    # 2. Safe Loading: Filter out mismatched layers between server architecture and weights
-    model_dict = model.state_dict()
-    matched_state_dict = {k: v for k, v in cleaned_state_dict.items() if k in model_dict and v.shape == model_dict[k].shape}
-    
-    # 3. Update current model structure with downloaded valid weights
-    model_dict.update(matched_state_dict)
-    
-    # Load weights safely
-    model.load_state_dict(model_dict, strict=True)
+        state_dict = (
+            checkpoint.get("model_state_dict", checkpoint)
+            if isinstance(checkpoint, dict)
+            else checkpoint
+        )
+        
+        # 1. Clean DataParallel prefixes if present
+        cleaned_state_dict = {}
+        for k, v in state_dict.items():
+            name = k.replace("module.", "")
+            cleaned_state_dict[name] = v
+            
+        # 2. Safe Loading Layer Matcher
+        model_dict = model.state_dict()
+        matched_state_dict = {
+            k: v for k, v in cleaned_state_dict.items() 
+            if k in model_dict and v.shape == model_dict[k].shape
+        }
+        
+        # 3. Update model weights
+        model_dict.update(matched_state_dict)
+        model.load_state_dict(model_dict)
+    except Exception as e:
+        st.error(f"Error loading model weights: {e}")
+        
     model.eval()
     return model
 
-# Initialize Model
-model = load_model()
+# Initialize Model safely
+try:
+    model = load_model()
+except Exception as e:
+    st.error(f"Failed to initialize framework: {e}")
 
 # Image Transform Pipeline
 transform = transforms.Compose([
@@ -189,7 +203,6 @@ if uploaded_file:
     with col1:
         st.markdown('<div class="section-header">Analyzed Image</div>', unsafe_allow_html=True)
         image = Image.open(uploaded_file).convert("RGB")
-        # මෙතන තිබුණු channels="RGB" ඉවත් කර දෝෂය නිවැරදි කර ඇත
         st.image(
             image, 
             use_container_width=True
